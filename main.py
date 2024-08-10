@@ -21,6 +21,7 @@ today_files = 0    # 今天最多的页数
 # smtp
 smtp_server = 'smtp.163.com'
 smtp_port = 465     # 使用ssl
+# smtp_port = 587    # 使用tls
 smtp_user = ''
 smtp_password = ''
 # 发件人和收件人
@@ -147,16 +148,30 @@ def send_email(logfile , pdf_name , to_email):
     # 连接到SMTP服务器并发送邮件
     # 初始化server变量
     server = None
+    # 连接到SMTP服务器并发送邮件
     try:
-        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        # ssl发送
+        # server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        # server.login(smtp_user, smtp_password)
+        # server.sendmail(from_email, to_email, msg.as_string())
+        # tls发送
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # 开启TLS加密
         server.login(smtp_user, smtp_password)
         server.sendmail(from_email, to_email, msg.as_string())
-        logfile.write(f"Email sent to {to_email} successfully.\n")
-    except Exception as e:
+
+        logfile.write("Email sent successfully.\n")
+    except smtplib.SMTPServerDisconnected as e:
+        logfile.write(f"SMTP server disconnected: {e}\n")
+    except smtplib.SMTPException as e:
         logfile.write(f"Failed to send email: {e}\n")
     finally:
-        if server:
-            server.quit()
+        # 只有在server已连接且未断开时才调用quit()
+        if server and server.sock:
+            try:
+                server.quit()
+            except smtplib.SMTPServerDisconnected:
+                logfile.write("Server already disconnected, cannot quit.")
 
 
 def del_temple_files(logfile):
